@@ -60,6 +60,20 @@ public class MSProjectAdapter implements BridgeAdapter {
     
     /** Defines the logger */
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(MSProjectAdapter.class);
+
+    /** Adapter version constant. */
+    public static String VERSION;
+    /** Load the properties version from the version.properties file. */
+    static {
+        try {
+            java.util.Properties properties = new java.util.Properties();
+            properties.load(MSProjectAdapter.class.getResourceAsStream("/"+MSProjectAdapter.class.getName()+".version"));
+            VERSION = properties.getProperty("version");
+        } catch (IOException e) {
+            logger.warn("Unable to load "+MSProjectAdapter.class.getName()+" version properties.", e);
+            VERSION = "Unknown";
+        }
+    }
     
     /** Defines the collection of property names for the adapter */
     public static class Properties {
@@ -70,7 +84,7 @@ public class MSProjectAdapter implements BridgeAdapter {
     
     private final ConfigurablePropertyMap properties = new ConfigurablePropertyMap(
         new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_USERNAME).setIsRequired(true),
-        new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_PASSWORD).setIsRequired(true),
+        new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_PASSWORD).setIsRequired(true).setIsSensitive(true),
         new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_HOMEPAGE_URL).setIsRequired(true)
     );
     
@@ -104,7 +118,7 @@ public class MSProjectAdapter implements BridgeAdapter {
     
     @Override
     public String getVersion() {
-        return "1.0.0";
+        return VERSION;
     }
     
     @Override
@@ -123,11 +137,6 @@ public class MSProjectAdapter implements BridgeAdapter {
 
     @Override
     public Count count(BridgeRequest request) throws BridgeError {
-        // Log the access
-        logger.trace("Counting the Salesforce Records");
-        logger.trace("  Structure: " + request.getStructure());
-        logger.trace("  Query: " + request.getQuery());
-
         String structure = request.getStructure();
         
         if (!VALID_STRUCTURES.contains(structure)) {
@@ -184,12 +193,6 @@ public class MSProjectAdapter implements BridgeAdapter {
 
     @Override
     public Record retrieve(BridgeRequest request) throws BridgeError {
-        // Log the access
-        logger.trace("Retrieving ServiceNow Record");
-        logger.trace("  Structure: " + request.getStructure());
-        logger.trace("  Query: " + request.getQuery());
-        logger.trace("  Fields: " + request.getFieldString());
-        
         List<String> fields = request.getFields();
         String structure = request.getStructure();
         
@@ -265,12 +268,6 @@ public class MSProjectAdapter implements BridgeAdapter {
 
     @Override
     public RecordList search(BridgeRequest request) throws BridgeError {
-        // Log the access
-        logger.trace("Searching ServiceNow Records");
-        logger.trace("  Structure: " + request.getStructure());
-        logger.trace("  Query: " + request.getQuery());
-        logger.trace("  Fields: " + request.getFieldString());
-        
         List<String> fields = request.getFields();
         String structure = request.getStructure();
         
