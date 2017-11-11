@@ -37,7 +37,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -54,10 +54,10 @@ public class MSProjectAdapter implements BridgeAdapter {
     /*----------------------------------------------------------------------------------------------
      * PROPERTIES
      *--------------------------------------------------------------------------------------------*/
-    
+
     /** Defines the adapter display name */
     public static final String NAME = "MSProject Bridge";
-    
+
     /** Defines the logger */
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(MSProjectAdapter.class);
 
@@ -74,35 +74,35 @@ public class MSProjectAdapter implements BridgeAdapter {
             VERSION = "Unknown";
         }
     }
-    
+
     /** Defines the collection of property names for the adapter */
     public static class Properties {
         public static final String PROPERTY_USERNAME = "Username";
         public static final String PROPERTY_PASSWORD = "Password";
         public static final String PROPERTY_HOMEPAGE_URL = "Homepage Url";
     }
-    
+
     private final ConfigurablePropertyMap properties = new ConfigurablePropertyMap(
         new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_USERNAME).setIsRequired(true),
         new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_PASSWORD).setIsRequired(true).setIsSensitive(true),
         new ConfigurableProperty(MSProjectAdapter.Properties.PROPERTY_HOMEPAGE_URL).setIsRequired(true)
     );
-    
+
     /**
      * Structures that are valid to use in the bridge
      */
     public static final List<String> VALID_STRUCTURES = Arrays.asList(new String[] {
         "Projects"
     });
-    
+
     private String username;
     private String password;
     private String homepageUrl;
-    
+
     /*---------------------------------------------------------------------------------------------
      * SETUP METHODS
      *-------------------------------------------------------------------------------------------*/
-    
+
     @Override
     public void initialize() throws BridgeError {
         this.username = properties.getValue(Properties.PROPERTY_USERNAME);
@@ -115,22 +115,22 @@ public class MSProjectAdapter implements BridgeAdapter {
     public String getName() {
         return NAME;
     }
-    
+
     @Override
     public String getVersion() {
         return VERSION;
     }
-    
+
     @Override
     public void setProperties(Map<String,String> parameters) {
         properties.setValues(parameters);
     }
-    
+
     @Override
     public ConfigurablePropertyMap getProperties() {
         return properties;
     }
-    
+
     /*---------------------------------------------------------------------------------------------
      * IMPLEMENTATION METHODS
      *-------------------------------------------------------------------------------------------*/
@@ -138,53 +138,53 @@ public class MSProjectAdapter implements BridgeAdapter {
     @Override
     public Count count(BridgeRequest request) throws BridgeError {
         String structure = request.getStructure();
-        
+
         if (!VALID_STRUCTURES.contains(structure)) {
             throw new BridgeError("Invalid Structure: '" + request.getStructure() + "' is not a valid structure");
         }
-        
+
         MSProjectQualificationParser parser = new MSProjectQualificationParser();
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl));
         String query = parser.parse(request.getQuery(),request.getParameters());
-        
+
         if (query != null){
             queryBuilder.append(URLEncoder.encode(query));
         }
-        
+
         // We have to replace the encoded "&" and "=" values because the Sharepoint API
         // expects the literal values, not the encoded version.
         String url = queryBuilder.toString().replaceAll("%3D", "=").replaceAll("%26", "&");
-        
+
         String cookies = get_office365_cookies(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl), this.username, this.password, false);
-        
-        HttpClient client = new DefaultHttpClient();
+
+        HttpClient client = HttpClients.createDefault();
         HttpGet get = new HttpGet(url);
         get.setHeader("cookie", cookies);
         get.setHeader("Accept", "application/json");
-        
+
         HttpResponse response;
         String output = "";
-        
+
         try {
             response = client.execute(get);
             HttpEntity entity = response.getEntity();
             output = EntityUtils.toString(entity);
-        } 
-        catch (IOException e) {
-            throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project"); 
         }
-        
+        catch (IOException e) {
+            throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
+        }
+
         Long count;
         JSONObject jsonOutput = (JSONObject)JSONValue.parse(output);
-        
+
         if (jsonOutput.get("odata.error") != null) {
             JSONObject error = (JSONObject)jsonOutput.get("odata.error");
             JSONObject errorMessage = (JSONObject) error.get("message");
             logger.error("Error: " + errorMessage.get("value"));
             throw new BridgeError((String)errorMessage.get("value"));
         }
-        
+
         JSONArray results = (JSONArray)jsonOutput.get("value");
         count = Long.valueOf(results.size());
 
@@ -195,58 +195,58 @@ public class MSProjectAdapter implements BridgeAdapter {
     public Record retrieve(BridgeRequest request) throws BridgeError {
         List<String> fields = request.getFields();
         String structure = request.getStructure();
-        
+
         if (!VALID_STRUCTURES.contains(structure)) {
             throw new BridgeError("Invalid Structure: '" + request.getStructure() + "' is not a valid structure");
         }
-        
+
         MSProjectQualificationParser parser = new MSProjectQualificationParser();
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl));
         String query = parser.parse(request.getQuery(),request.getParameters());
-        
+
         if (query != null){
             queryBuilder.append(URLEncoder.encode(query));
         }
-        
+
         // We have to replace the encoded "&" and "=" values because the Sharepoint API
         // expects the literal values, not the encoded version.
         String url = queryBuilder.toString().replaceAll("%3D", "=").replaceAll("%26", "&");
-        
+
         String cookies = get_office365_cookies(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl), this.username, this.password, false);
-        
-        HttpClient client = new DefaultHttpClient();
+
+        HttpClient client = HttpClients.createDefault();
         HttpGet get = new HttpGet(url);
         get.setHeader("cookie", cookies);
         get.setHeader("Accept", "application/json");
-        
+
         HttpResponse response;
         String output = "";
-        
+
         try {
             response = client.execute(get);
             HttpEntity entity = response.getEntity();
             output = EntityUtils.toString(entity);
-        } 
-        catch (IOException e) {
-            throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project"); 
         }
-        
+        catch (IOException e) {
+            throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
+        }
+
         JSONObject jsonOutput = (JSONObject)JSONValue.parse(output);
-        
+
         if (jsonOutput.get("odata.error") != null) {
             JSONObject error = (JSONObject)jsonOutput.get("odata.error");
             JSONObject errorMessage = (JSONObject) error.get("message");
             logger.error("Error: " + errorMessage.get("value"));
             throw new BridgeError((String)errorMessage.get("value"));
         }
-        
+
         JSONArray results = (JSONArray)jsonOutput.get("value");
         Record record;
-        
+
         if (results.size() > 1) {
             throw new BridgeError("Multiple results matched an expected single match query");
-        }  
+        }
         else if (results.isEmpty()) {
             record = new Record(null);
         }
@@ -262,7 +262,7 @@ public class MSProjectAdapter implements BridgeAdapter {
                 record = new Record(recordMap);
             }
         }
-        
+
         return record;
     }
 
@@ -270,46 +270,46 @@ public class MSProjectAdapter implements BridgeAdapter {
     public RecordList search(BridgeRequest request) throws BridgeError {
         List<String> fields = request.getFields();
         String structure = request.getStructure();
-        
+
         if (!VALID_STRUCTURES.contains(structure)) {
             throw new BridgeError("Invalid Structure: '" + request.getStructure() + "' is not a valid structure");
         }
-        
+
         MSProjectQualificationParser parser = new MSProjectQualificationParser();
         StringBuilder queryBuilder = new StringBuilder();
         Map<String,String> metadata = BridgeUtils.normalizePaginationMetadata(request.getMetadata());
         queryBuilder.append(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl));
         String query = parser.parse(request.getQuery(),request.getParameters());
-        
+
         if (query != null){
             queryBuilder.append(URLEncoder.encode(query));
         }
-        
+
         // We have to replace the encoded "&" and "=" values because the Sharepoint API
         // expects the literal values, not the encoded version.
         String url = queryBuilder.toString().replaceAll("%3D", "=").replaceAll("%26", "&");
-        
+
         String cookies = get_office365_cookies(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl), this.username, this.password, false);
-        
-        HttpClient client = new DefaultHttpClient();
+
+        HttpClient client = HttpClients.createDefault();
         HttpGet get = new HttpGet(url);
         get.setHeader("cookie", cookies);
         get.setHeader("Accept", "application/json");
-        
+
         HttpResponse response;
         String output = "";
-        
+
         try {
             response = client.execute(get);
             HttpEntity entity = response.getEntity();
             output = EntityUtils.toString(entity);
-        } 
-        catch (IOException e) {
-            throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project"); 
         }
-        
+        catch (IOException e) {
+            throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
+        }
+
         JSONObject jsonOutput = (JSONObject)JSONValue.parse(output);
-        
+
         if (jsonOutput.get("odata.error") != null) {
             JSONObject error = (JSONObject)jsonOutput.get("odata.error");
             JSONObject errorMessage = (JSONObject) error.get("message");
@@ -318,9 +318,9 @@ public class MSProjectAdapter implements BridgeAdapter {
         }
 
         JSONArray results = (JSONArray)jsonOutput.get("value");
-        
+
         List<Record> records = new ArrayList<Record>();
-        
+
         for (int i=0; i < results.size(); i++) {
             JSONObject recordObject = (JSONObject)results.get(i);
             records.add(new Record((Map<String,Object>)recordObject));
@@ -337,32 +337,32 @@ public class MSProjectAdapter implements BridgeAdapter {
                 fields.add(pair.getKey().toString());
             }
         }
-        
+
         metadata.put("count",String.valueOf(records.size()));
         metadata.put("size", String.valueOf(records.size()));
 
         // Returning the response
         return new RecordList(fields, records, metadata);
     }
-    
+
     /*----------------------------------------------------------------------------------------------
      * PRIVATE HELPER METHODS
      *--------------------------------------------------------------------------------------------*/
-    
+
     private void testAuth() throws BridgeError {
         logger.debug("Testing the authentication credentials");
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append(String.format("%s/_api/ProjectData/Projects?$top=1", this.homepageUrl));
-        
+
         String cookies = get_office365_cookies(String.format("%s/_api/ProjectData/Projects?", this.homepageUrl), this.username, this.password, false);
-        
-        HttpClient client = new DefaultHttpClient();
+
+        HttpClient client = HttpClients.createDefault();
         HttpGet get = new HttpGet(queryBuilder.toString());
         get.setHeader("cookie", cookies);
         get.setHeader("Accept", "application/json");
-        
+
         HttpResponse response;
-        
+
         try {
             response = client.execute(get);
             HttpEntity entity = response.getEntity();
@@ -373,10 +373,10 @@ public class MSProjectAdapter implements BridgeAdapter {
         }
         catch (IOException e) {
             logger.error(e.getMessage());
-            throw new BridgeError("Unable to make a connection to properly to Microsoft Project."); 
+            throw new BridgeError("Unable to make a connection to properly to Microsoft Project.");
         }
     }
-    
+
     /**
      * A method used to authenticate using an external application (in command line)
      */
@@ -412,7 +412,7 @@ public class MSProjectAdapter implements BridgeAdapter {
         samlUsername.append("</s:Envelope>");
         return samlUsername.toString();
     }
-    
+
     private String get_saml_assertion(String url, String assertion, String to_url) throws BridgeError {
         StringBuilder samlAssertion = new StringBuilder();
         samlAssertion.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -440,41 +440,41 @@ public class MSProjectAdapter implements BridgeAdapter {
         samlAssertion.append("</s:Envelope>");
         return samlAssertion.toString();
     }
-    
+
     private String get_office365_cookies(String sp_url, String username, String password, Boolean integratedAuth) throws BridgeError {
         if (sp_url.isEmpty()){
             throw new BridgeError("Invalid Url:" + sp_url + "is not a valid Office 365 Url.");
         }
-        
+
         if (username.isEmpty() || password.isEmpty()){
             throw new BridgeError("Invalid Username/Password: Username and/or Password cannot be left blank.");
         }
-        
-        HttpClient client = new DefaultHttpClient();
+
+        HttpClient client = HttpClients.createDefault();
         String url = String.format("https://login.microsoftonline.com/GetUserRealm.srf?handler=1&login=%s", username);
         HttpPost post  = new HttpPost(url);
         HttpResponse response;
         String output = "";
         String cookie = "";
-        
+
         try {
             response = client.execute(post);
             HttpEntity entity = response.getEntity();
             output = EntityUtils.toString(entity);
-        } 
+        }
         catch (IOException e) {
             throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
         }
-        
+
         JSONObject jsonOutput = (JSONObject)JSONValue.parse(output);
         String authUrl = (String) jsonOutput.get("AuthURL");
-        
+
         Map<String, String> token = new HashMap<String,String>();
         token.put("binaryST", null);
         token.put("expires", null);
         String logonToken = null;
         String body = null;
-        
+
         if (authUrl != null && integratedAuth == true){
             throw new BridgeError("Windows Authentication not currently supported.");
         } else if (logonToken == null && authUrl != null && !password.isEmpty()){
@@ -487,14 +487,14 @@ public class MSProjectAdapter implements BridgeAdapter {
             } catch (UnsupportedEncodingException ex) {
                 throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
             }
-            
-            HttpClient usernameClient = new DefaultHttpClient();
+
+            HttpClient usernameClient = HttpClients.createDefault();
             HttpPost usernamePost = new HttpPost(stsUsernameMixedUrl);
             usernamePost.setEntity(entity);
             usernamePost.setHeader("Content-Type", "application/soap+xml");
             HttpResponse usernameResponse;
             String usernameOutput;
-            
+
             try {
                 usernameResponse = usernameClient.execute(usernamePost);
                 HttpEntity usernameEntity = usernameResponse.getEntity();
@@ -513,7 +513,7 @@ public class MSProjectAdapter implements BridgeAdapter {
                     logger.error("Full XML Error: " + e.getMessage());
                     throw new BridgeError("Parsing of the XML response failed",e);
                 }
-                
+
                 TransformerFactory tf = TransformerFactory.newInstance();
                 Transformer transformer = tf.newTransformer();
                 transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
@@ -526,27 +526,27 @@ public class MSProjectAdapter implements BridgeAdapter {
                 }
 
                 if (body != null) {
-                    HttpClient tokenClient = new DefaultHttpClient();
+                    HttpClient tokenClient = HttpClients.createDefault();
                     HttpPost tokenPost = new HttpPost("https://login.microsoftonline.com/extSTS.srf");
-                    
+
                     StringEntity tokenEntity;
                     try {
                         tokenEntity = new StringEntity(body);
                     } catch (UnsupportedEncodingException ex) {
                         throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
                     }
-                    
+
                     tokenPost.setEntity(tokenEntity);
                     tokenPost.setHeader("Content-Type", "application/soap+xml");
                     HttpResponse tokenResponse;
                     String tokenOutput;
-                    
+
                     tokenResponse = tokenClient.execute(tokenPost);
                     HttpEntity httpTokenEntity = tokenResponse.getEntity();
                     tokenOutput = EntityUtils.toString(httpTokenEntity);
-                    
+
                     Document tokenDoc;
-                    
+
                     try {
                         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
                         DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -556,7 +556,7 @@ public class MSProjectAdapter implements BridgeAdapter {
                         NodeList expireDate = tokenDoc.getElementsByTagName("wsu:Expires");
                         String binaryST = binary.item(0).getTextContent();
                         String expires = expireDate.item(0).getTextContent();
-                        
+
                         if (binaryST != null){
                             token.put("binaryST", binaryST);
                             token.put("expires", expires);
@@ -571,11 +571,11 @@ public class MSProjectAdapter implements BridgeAdapter {
                 if (token.get("binaryST") == null) {
                     throw new BridgeError("The Office 365 Url and Username/Password combination do not match. Please check the Office 365 Url and try again.");
                 }
-                
+
                 String []signin_url = sp_url.split("/");
                 String ws_signin_url = signin_url[0] + "//" + signin_url[1] + signin_url[2] + "/_forms/default.aspx?wa=wsignin1.0";
 
-                HttpClient cookiesClient = new DefaultHttpClient();
+                HttpClient cookiesClient = HttpClients.createDefault();
                 HttpPost cookiesPost = new HttpPost(ws_signin_url);
                 StringEntity cookiesEntity;
 
@@ -597,14 +597,14 @@ public class MSProjectAdapter implements BridgeAdapter {
 		}
 
                 cookie = String.format(cookies.get(0) + ";" + cookies.get(1) + cookies.get(2));
-            } 
+            }
             catch (IOException e) {
                 throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
             } catch (TransformerException e) {
                 throw new BridgeError("Unable to make a connection to properly execute the query to Microsoft Project");
             }
         }
-        
+
         return cookie;
     }
 }
